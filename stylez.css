@@ -1,0 +1,20 @@
+/* ===== IMPORT FONTS ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Merriweather:wght@400;700&display=swap');
+
+
+
+html, body {
+  background: linear-gradient(135deg, #252525, #fa9fb5);
+}
+
+
+body,
+     div {
+  color: white !important;
+}
+
+.card {
+  background-color: transparent !important;
+  border: line  !important;
+  box-shadow: none !important;
+}

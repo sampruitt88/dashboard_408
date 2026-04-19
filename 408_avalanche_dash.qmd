@@ -1,0 +1,353 @@
+---
+title: "408_avalanche_dash"
+format: dashboard
+author: "Sam Pruitt"
+editor: visual
+orientation: rows
+css: stylez.css
+number-sections: FALSE
+---
+
+
+
+```{r setup}
+#| message: FALSE
+
+library(knitr)
+library(plotly)
+library(tidyverse)
+library(dataRetrieval)
+library(lubridate)
+library(sf)
+library(ggspatial)
+library(prettymapr)
+library(lubridate)
+library(rosm)
+library(bsicons)
+library(viridis)
+library(shiny)
+library(leaflet)
+```
+
+```{r}
+# read csv
+avalanches <- read.csv("avalanches.csv")
+
+
+# Read zones
+zones <- st_read("avalanche_center_forecast_zones.shp", quiet = TRUE)
+
+zones <- st_transform(zones, 4326)
+
+
+# cleaning names and new df
+avalanches <- avalanches |>
+  rename(Who = Trigger,
+         Trigger = Trigger..additional.info) 
+
+utah_avy <- avalanches |>
+  select(-Comments.4, - Comments.3, -Comments.2, - Comments.1, - Weather.Conditions.and.History, -Terrain.Summary, -Accident.and.Rescue.Summary)
+
+
+  
+
+# creating season DF
+utah_avy$Date <- as.Date(utah_avy$Date, format = "%m/%d/%Y")
+
+utah_avy <- utah_avy |>
+  filter(Date >= as.Date("2024-10-01") &
+         Date <= as.Date("2025-06-01")) 
+  
+
+
+# split into lat and long
+utah_avy <- utah_avy |>
+  separate(Coordinates, into = c("latitude", "longitude"), sep = ",") |>
+  mutate(
+    latitude = as.numeric(latitude),
+    longitude = as.numeric(longitude)
+  )
+
+utah_avy <- utah_avy |>
+  filter(!is.na(longitude) & !is.na(latitude))
+
+# convert to spatial points
+utah_avy <- st_as_sf(utah_avy,
+                       coords = c("longitude", "latitude"),
+                       crs = 4326)
+
+# Match Shapefile CRS
+
+utah_avy <- st_transform(utah_avy, st_crs(zones))
+
+
+# Depth 
+
+utah_avy <- utah_avy |>
+  mutate(
+    Depth = case_when(
+      str_detect(Depth, "'") ~ as.numeric(str_remove(Depth, "'")) * 12,
+      str_detect(Depth, '"') ~ as.numeric(str_remove(Depth, '"')),
+      TRUE ~ as.numeric(Depth)
+    )
+  ) 
+
+# Width
+
+utah_avy <- utah_avy |>
+  mutate(
+    Width = case_when(
+      str_detect(Width, "'") ~ as.numeric(str_remove(Width, "'")),
+      TRUE ~ as.numeric(Width)
+    )
+  )
+
+# Vertical
+
+utah_avy <- utah_avy |>
+  mutate(
+    Vertical = Vertical |>
+      str_replace_all(",", "") |>
+      str_replace_all("'", "") |>
+      as.numeric()
+  )
+
+# Aspect
+
+utah_avy$Aspect <- as.factor(utah_avy$Aspect)
+
+
+
+```
+
+```{r}
+#| message: false
+#| echo: false
+# map
+
+region_pal <- colorFactor(
+  palette = "Set1",
+  domain = utah_avy$Region
+)
+
+
+region_leaf <- leaflet() |>
+addProviderTiles("Esri.WorldTopoMap") |>
+  addPolygons(
+    data = zones,
+    color = 'red',
+    ) |>
+  addCircleMarkers(
+    data = utah_avy,
+    color = ~region_pal(Region),
+    fillColor = ~region_pal(Region),
+    fillOpacity = .8,
+    radius = 6,
+    stroke = F
+  ) |>
+  addLegend(
+    "bottomright",
+    pal = region_pal,
+    values = utah_avy$Region,
+    title = "Region"
+  )
+
+
+
+```
+
+```{r}
+# plot showing weak layer and then mean depth of each weak layer
+
+facets <- utah_avy |>
+  filter(`Weak.Layer` == "Facets") |>
+  select(Width, Depth, Aspect, Vertical)
+  
+facets <- facets[-115,]
+  
+facet_plot <-
+  ggplot(facets, aes(x = Depth, y = Width, color = Aspect)) +
+  geom_point(color = 'black') +
+  geom_smooth(method = "loess", se = F) +
+  labs(
+    x = "Depth",
+    y = "Width",
+    title = "Size of Facet problem Avalanches, by Aspect"
+  )
+  
+
+
+  
+```
+
+```{r}
+#| warning: FALSE
+# Weak Layers
+
+
+ weak_layers <- ggplot(utah_avy, aes(x = Weak.Layer,na.rm = TRUE, fill = Weak.Layer)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+   labs(
+     x = "Weak Layer",
+     y = "Count",
+     title = "Avalanches by Weak Layer"
+   )
+  
+```
+
+```{r}
+#| warning: FALSE
+# Weak_layer by size
+
+
+
+p <- plot_ly(facets,
+             x = ~Depth,
+             y = ~Width,
+             z = ~Vertical,
+             color = ~Aspect,
+             colors = "Dark2", 
+             type = "scatter3d",
+             mode = "markers") |>
+     layout(
+    title = list(
+      text = "Size Structures of Facet Problem Avalanches",
+      font = list(size = 16)
+    ),
+    scene = list(
+      xaxis = list(
+        title = "Depth (in)",
+        showgrid = T,
+        zeroline = TRUE
+      ),
+      yaxis = list(
+        title = "Width (ft)",
+        showgrid = T,
+        zeroline = TRUE
+      ),
+      zaxis = list(
+        title = "Vertical (ft)",
+        showgrid = T,
+        zeroline = TRUE
+      ),
+      camera = list(eye = list(x = 1.6, y = 1.6, z = 1.2))
+    )
+  )
+
+```
+
+```{r}
+# Facet ggplot
+
+facet_facet <- 
+  ggplot(facets, aes(x = Depth, y = Width, color = Aspect)) +
+  geom_jitter() +
+  geom_smooth(method = "lm", se = F) +
+  labs(
+    title = "Depth and Width of Facet Avalanches"
+  )
+
+
+facet_aspect <-
+  ggplot(facets, aes(x = Aspect, fill = Aspect)) +
+  geom_bar() +
+   labs(
+    x = "Aspect",
+    y = "Count",
+    title = "Facet Avalanches by Aspect"
+  )
+
+  
+
+
+
+```
+
+# 2024-25 Avalanches
+
+::: {.card title = "2024-25 Avalanches by Region"}
+
+```{r}
+region_leaf
+```
+
+:::
+
+## 
+
+<div>
+
+An analysis of different weak layers during the 2024-25 Avalanche Season in Utah, USA. This Dashboard aims to visualize relationships between different weak layer failures and how they impact or are impacted by other variables. Data obtained through utahavalanchecenter.org.
+
+</div>
+
+## 
+
+```{r}
+#| content: valuebox
+#| title: "Total Avalanches"
+list(
+  icon = 'snow',
+  color = "primary",
+  value = "786"
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Region With the most Avalanche Activity"
+list(
+  icon = 'water',
+  color = "primary",
+  value = "Salt Lake"
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Deaths"
+list(
+  icon = "x",
+  color = "primary",
+  value = "5"
+)
+```
+
+# Weak Layers
+
+## 
+
+::: {.card style="background: transparent; border: none;"}
+```{r}
+weak_layers
+```
+:::
+
+# Facets
+
+<div>
+
+Avalanches that broke on Facet layers were the most common during the 2024-25 season. The below plots help illustrate how the depth of a facet layer can influence the magnitude of an avalanche.
+
+</div>
+
+## 
+
+<div>
+
+```{r}
+p
+```
+
+</div>
+
+### 
+
+```{r}
+facet_facet
+```
+
+```{r}
+facet_aspect
+```
