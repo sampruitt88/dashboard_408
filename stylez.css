@@ -1,15 +1,24 @@
-/* ===== IMPORT FONTS ===== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Merriweather:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap');
 
 
+body {
+  font-family: "Oswald", sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: "Oswald", sans-serif;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
 
 html, body {
-  background: linear-gradient(135deg, #252525, #fa9fb5);
+  background: linear-gradient(135deg, #9e9ac8, #fa9fb5);
 }
 
 
-body,
-     div {
+body
+     {
   color: white !important;
 }
 
