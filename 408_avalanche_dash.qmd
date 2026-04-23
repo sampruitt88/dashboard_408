@@ -47,7 +47,9 @@ avalanches <- avalanches |>
          Trigger = Trigger..additional.info) 
 
 utah_avy <- avalanches |>
-  select(-Comments.4, - Comments.3, -Comments.2, - Comments.1, - Weather.Conditions.and.History, -Terrain.Summary, -Accident.and.Rescue.Summary)
+  select(-Comments.4, - Comments.3, -Comments.2, - Comments.1, - Weather.Conditions.and.History, -Terrain.Summary, -Accident.and.Rescue.Summary) |>
+  filter(Weak.Layer != "")
+  
 
 # creating season DF
 utah_avy$Date <- as.Date(utah_avy$Date, format = "%m/%d/%Y")
@@ -148,6 +150,7 @@ region_pal <- colorFactor(
 
 region_leaf <- leaflet() |>
 addProviderTiles("Esri.WorldTopoMap") |>
+  
   addPolygons(
     data = zones,
     color = ~region_pal(name),
@@ -157,10 +160,23 @@ addProviderTiles("Esri.WorldTopoMap") |>
   addCircleMarkers(
     data = utah_avy,
     color = ~region_pal(Region),
-    fillColor = ~region_pal(Region),
-    fillOpacity = 1,
     radius = 6,
-    stroke = F
+    stroke = FALSE,
+    fillOpacity = 1,
+    group = ~Weak.Layer,
+    popup = ~paste0(
+  "<table>",
+  "<tr><td><b>Date</b></td><td>", Date, "</td></tr>",
+  "<tr><td><b>Region</b></td><td>", Region, "</td></tr>",
+  "<tr><td><b>Depth</b></td><td>", Depth, "</td></tr>",
+  "<tr><td><b>Width</b></td><td>", Width, "</td></tr>",
+  "<tr><td><b>Vertical</b></td><td>", Vertical, "</td></tr>",
+  "<tr><td><b>Weak Layer</b></td><td>", Weak.Layer, "</td></tr>",
+  "</table>"
+) )|>
+  addLayersControl(
+    overlayGroups = unique(utah_avy$Weak.Layer),
+    options = layersControlOptions(collapsed = TRUE)
   ) |>
   addLegend(
     "bottomright",
@@ -231,10 +247,13 @@ facet_average <- facets |>
     mean_size = round(mean_size, 1)
   )
  
+```
+
+```{r}
 
 facet_aspect <-
   ggplot(facets, aes(x = Aspect, y = Depth, color = Aspect)) +
-  geom_point() +
+  geom_jitter() +
   geom_violin(alpha = 0.6)+
   geom_boxplot(alpha = 0.6, width = 0.3) +
    labs(
@@ -243,31 +262,11 @@ facet_aspect <-
     title = "Depth Facet Avalanches by Aspect"
   )
 
-
-
-
-circular_depth<- 
-  ggplot(facet_average, aes(x = Aspect, y = count, fill = Aspect)) +
-  geom_col(width = 1, color = "black") +
-  coord_polar(start = 0) +
-  labs(
-    title = "Sum of Facet Avalanches by Aspect",
-    x = NULL,
-    y = "Sum"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.background = element_rect(fill = "transparent", color = NA)
-  ) +
-  theme(
-    axis.text.x = element_text(size = 11),
-    panel.grid = element_blank()
-  )
-
-
-
-
 ```
+
+
+
+
 
 ```{r}
 #| message: FALSE
@@ -278,7 +277,7 @@ table_facet <- reactable(facet_average %>%
                    theme = reactableTheme(
                      style = list(fontFamily = "sans-serif"),
                      borderColor = "black",
-                     backgroundColor = "transparent"
+                     backgroundColor = "translucent"
                    ))
 ```
 
@@ -310,22 +309,6 @@ depth_vert <-
 
 ```
 
-```{r}
-# size
-
-size_facet <- 
-  ggplot(facet_average, aes(x = Aspect, y = mean_size, fill = Aspect)) +
-  geom_col()
-
-```
-
-
-
-
-
-
-
-
 
 
 
@@ -333,17 +316,15 @@ size_facet <-
 
 # Utah Avalanches
 
-## 
+## Map
 
 :::{.card title = "Study Area"}
-
 ```{r}
 region_leaf
 ```
-
 :::
 
-### 
+### valuebox
 
 ```{r}
 #| content: valuebox
@@ -375,60 +356,36 @@ list(
 )
 ```
 
-## 
+## facts
 
-<div>
+This dashboard aims to visualize different variables in facet layer avalanches. As seen in the map and plot below, avalanches by facet layer are the most common avalanche problem throughout the Utah forecast region. Data obtained through utahavalanchecenter.org.
 
-This dashboard aims to visualize the relationship between facet layer failures and different size variables of avalanches. As seen in the chart above, facet layer failures tend to make up the majority of Avalanches throughout the Utah forecast region. Data obtained through utahavalanchecenter.org.
 
-</div>
 
 :::{.card title = "Avalanches by Weak Layer Failure 2020-25"}
-
 ```{r}
 year_slide
 ```
-
 :::
 
 # Facets by Aspect
 
-## 
+## aspect
 
-:::{.card title = "Facet Avalanches by Aspect"}
+:::{}
 ```{r}
-circular_depth
-```
-
-```{r}
-size_facet
+facet_aspect
 ```
 :::
 
 
-##
+###
 
+:::{}
 ```{r}
-#| content: valuebox
-#| title: "Aspect with the most Facet released Avalanches"
-list(
-  icon = 'compass',
-  color = "translucent",
-  value = "Northeast"
-)
+table_facet
 ```
-
-```{r}
-#| content: valuebox
-#| title: "Aspect with largest Avalanches on average"
-list(
-  icon = 'water',
-  color = "translucent",
-  value = "South"
-)
-```
-
-
+:::
 
 # Facet size 
 
@@ -436,28 +393,20 @@ list(
 
 ## Graphs
 
-:::{layout-ncol=2}
-:::{.card title = "Size Structure of Facet Avalanches"}
+
+:::{layout-ncol =2}
 ```{r}
 width_v_depth
 ```
-:::
 
-:::{.card}
 ```{r}
 depth_vert
 ```
 :::
-:::
 
 
-:::{.card title = "Size of Facet Layers by Variable"}
-```{r}
-table_facet
-```
-:::
 
-###
+### Valueboxes
 
 
 ```{r}
@@ -499,10 +448,12 @@ list(
 
 -   Overview
 
-The plots shown in this dashboard provide an in depth understanding of where facet avalanches are most likely to occur in relation to aspect, as well as how the depth of the facet layer affects the size of the avalanche.
+The plots shown in this dashboard provide an in depth understanding of where facet avalanches are most likely to occur in relation to aspect, as well as how the depth of the facet layer affects the size of the avalanche in both width and vertical run.
 
 -   Discussion
 
 I found that while southern aspects had the deepest average depth (3.1 ft), they had the least amount of facet released avalanches out of all aspects, while the majority (384) occurred on North Eastern facing slopes. This can be attributed to the difference in sun that each aspect receives. A southern slope receives the most sun out of any, which in the early season can melt early snowfall, reducing the risk of that early snow rotting until the next snowfall. A more northerly aspect does not receive as much sun, allowing a early snow-pack to sit and rot until normal season conditions persist. 
+
+:::
 
 
