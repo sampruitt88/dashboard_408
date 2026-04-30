@@ -27,3 +27,9 @@ body
   border: none  !important;
   box-shadow: none !important;
 }
+
+.dashboard-column {
+  display: flex;
+  flex-direction: column;
+}
+

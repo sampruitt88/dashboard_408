@@ -126,11 +126,7 @@ utah_avy <- utah_avy |>
   mutate(year = format(Date, "%Y"),
          month = month(Date, label = TRUE, abbr = TRUE))
 
-# Create size Column
 
-utah_avy <- utah_avy |>
-  mutate(
-    size = Width * Vertical * Depth)
   
 
 
@@ -220,13 +216,12 @@ year_slide <- plot_ly(
 # Make Facet DF
 facets <- utah_avy |>
   filter(`Weak.Layer` == "Facets") |>
-  select(Width, Depth, Aspect, Vertical, year, size, month) |>
+  select(Width, Depth, Aspect, Vertical, year, month) |>
   filter(
     !is.na(year),
     !is.na(Aspect), Aspect != "",
     !is.na(Width), Width != "",
     !is.na(Depth), Depth != "",
-    !is.na(size), size != "",
     !is.na(month), month != "",
   )
 
@@ -237,43 +232,42 @@ facet_average <- facets |>
     count = n(),
     mean_depth = mean(Depth, na.rm = TRUE),
     mean_width = mean(Width, na.rm = TRUE), 
-    mean_vertical = mean(Vertical, na.rm = TRUE),
-    mean_size = mean(size, na.rm = TRUE)
+    mean_vertical = mean(Vertical, na.rm = TRUE)
   ) |>
   mutate(
     mean_depth = round(mean_depth, 1),
     mean_width = round(mean_width, 1),
-    mean_vertical = round(mean_vertical, 1),
-    mean_size = round(mean_size, 1)
+    mean_vertical = round(mean_vertical, 1)
   )
  
 ```
 
 ```{r}
-
+#| fig-height: 10
+#| fig-width: 8
 facet_aspect <-
-  ggplot(facets, aes(x = Aspect, y = Depth, color = Aspect)) +
-  geom_jitter() +
-  geom_violin(alpha = 0.6)+
+  ggplot(facets, aes( x = "", y = Depth, color = Aspect)) +
+  geom_jitter(size = 3) +
+  geom_violin(alpha = 0.6, width = 0.6)+
   geom_boxplot(alpha = 0.6, width = 0.3) +
    labs(
-    x = "Aspect",
+    x = NULL,
     y = "Depth (ft)",
     title = "Depth Facet Avalanches by Aspect"
+  ) +
+  facet_wrap(facets$Aspect, ncol = 4, scales = "free_y") +
+  theme(
+    legend.position = "none"
   )
 
 ```
-
-
-
-
 
 ```{r}
 #| message: FALSE
 #| warning: FALSE
 
 table_facet <- reactable(facet_average %>% 
-                     select(Aspect, count, mean_depth, mean_width, mean_vertical, mean_size),
+                     select(Aspect, count, mean_depth, mean_width, mean_vertical),
                    theme = reactableTheme(
                      style = list(fontFamily = "sans-serif"),
                      borderColor = "black",
@@ -370,22 +364,24 @@ year_slide
 
 # Facets by Aspect
 
-## aspect
+### aspect
 
-:::{}
+:::{.card title = "Depth Facet Avalanche by Aspect" }
 ```{r}
+#| fig-width: 20
+#| fig-height: 10
 facet_aspect
 ```
 :::
 
 
-###
-
-:::{}
+:::{.card title = "Size Variables by Aspect" }
 ```{r}
 table_facet
 ```
 :::
+
+
 
 # Facet size 
 
@@ -411,7 +407,7 @@ depth_vert
 
 ```{r}
 #| content: valuebox
-#| title: "Average Depth of Facet layer"
+#| title: "Mean Depth of Facet layer"
 list(
   icon = 'rulers',
   color = "purple",
@@ -421,7 +417,7 @@ list(
 
 ```{r}
 #| content: valuebox
-#| title: "Average Width of Avalanche by Facet"
+#| title: "Mean Width of Avalanche by Facet"
 list(
   icon = 'arrow-left-right',
   color = "purple",
@@ -431,7 +427,7 @@ list(
 
 ```{r}
 #| content: valuebox
-#| title: "Average Vertical Run of Avalanche by Facet"
+#| title: "Mean Vertical Run of Avalanche by Facet"
 list(
   icon = "chevron-double-down",
   color = "purple",
@@ -446,13 +442,23 @@ list(
 
 :::{.card title = "Results"}
 
--   Overview
+- Discussion
 
-The plots shown in this dashboard provide an in depth understanding of where facet avalanches are most likely to occur in relation to aspect, as well as how the depth of the facet layer affects the size of the avalanche in both width and vertical run.
+While southern aspects yielded the highest average facet layer depth (3.1 ft), they had they lowest frequency of facet related avalanches. In contrast, the most avalanches (n = 384) occurred on northeastern aspects. This shows that there is a relationship between aspect and avalanche occurrence.
 
--   Discussion
+This pattern across aspects is most likely driven by the variation in solar radiation. South facing slopes receive much more sun, especially in the eaely season. This promotes freeze-thaw cycles, or complete melting of early season snow, which can prohibit persistent weak layers (PWL's) such as facets to form. As a result, while facets may be deeper in the snow pack later on, the structure is less likely to have widespread facet layers. 
 
-I found that while southern aspects had the deepest average depth (3.1 ft), they had the least amount of facet released avalanches out of all aspects, while the majority (384) occurred on North Eastern facing slopes. This can be attributed to the difference in sun that each aspect receives. A southern slope receives the most sun out of any, which in the early season can melt early snowfall, reducing the risk of that early snow rotting until the next snowfall. A more northerly aspect does not receive as much sun, allowing a early snow-pack to sit and rot until normal season conditions persist. 
+In contrast, North and Northeast facing slopes receive much less solar radiation than that of south facing slopes. This creates a much colder atmosphere, and when the temperature of deeper snow is warmer than the surface snow, can cause water vapor to move upward. This vapor recrystallizes as angular snow, forming a very weak and sugary layer. These layers cannot support high volumes of new snow, causing it to release as an avalanche. 
+
+The mean facet avalanche depth across all observations was 2.7 ft, with an average width of 230 ft and a mean vertical run of 624 ft. These means suggest that even with relatively shallow facets, large avalanches are common. This is consistent with Persistent Weak Layer behavior.
+
+Observations were found in Utah, where a colder and drier climate exists. Compared to a location such as Washington, with a maritime climate, facet observations may differ.
+
+Links for future implications :
+
+- https://utahavalanchecenter.org/
+
+- https://avtraining.org/
 
 :::
 
